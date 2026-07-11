@@ -47,7 +47,7 @@ async function main(): Promise<void> {
   const ctx = canvas.getContext("2d");
   const encoder = new VideoEncoder({ width, height, fps, outPath, audioPath });
 
-  const journey = values.scene === "journey" ? new JourneyScene(Number(values.seed)) : null;
+  const journey = values.scene === "journey" ? new JourneyScene(Number(values.seed), durationSec) : null;
 
   const startedAt = Date.now();
   for (let frame = 0; frame < totalFrames; frame++) {

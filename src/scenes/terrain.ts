@@ -32,21 +32,26 @@ function ridgeHeight(cfg: TerrainLayerConfig, worldX: number): number {
     : fbm1D(x, cfg.seed, cfg.octaves ?? 4);
 }
 
+/** Layer silhouette color after distance fog toward the horizon color. */
+export function foggedLayerColor(cfg: TerrainLayerConfig, layerColor: string, fogColor: string): string {
+  const fogMix = 0.2 + 0.8 * cfg.depth; // 1 = pure layer color, lower = foggier
+  return lerpHexCss(fogColor, layerColor, fogMix);
+}
+
 /**
  * Draws one silhouette ridge layer. cameraX is the camera position in
- * near-plane world pixels; fogColor is what the layer fades into with
- * distance (normally the sky color at the horizon).
+ * near-plane world pixels; fillColor should already include distance
+ * fog (see foggedLayerColor).
  */
 export function drawTerrainLayer(
   ctx: SKRSContext2D,
   cfg: TerrainLayerConfig,
   cameraX: number,
-  fogColor: string,
+  fillColor: string,
   w: number,
   h: number,
 ): void {
-  const fogMix = 0.2 + 0.8 * cfg.depth; // 1 = pure layer color, lower = foggier
-  ctx.fillStyle = lerpHexCss(fogColor, cfg.color, fogMix);
+  ctx.fillStyle = fillColor;
 
   const offset = cameraX * parallaxFactor(cfg.depth);
   const step = 4;
