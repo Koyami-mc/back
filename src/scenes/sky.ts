@@ -51,7 +51,8 @@ export class Sky {
     const g = ctx.createLinearGradient(0, 0, 0, h);
     for (const s of state.stops) g.addColorStop(s.pos, s.color);
     ctx.fillStyle = g;
-    ctx.fillRect(0, 0, w, h);
+    // overdraw a little so camera drift never exposes the frame edge
+    ctx.fillRect(0, -0.04 * h, w, 1.08 * h);
 
     const drawStars = (stars: Star[], maxY: number, alphaMul: number): void => {
       if (alphaMul <= 0.001) return;

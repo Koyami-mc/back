@@ -137,14 +137,28 @@ export class Traveler {
     const staffBottom = { x: x0 + 0.18 * H, y: groundYAt(x0 + 0.18 * H) - 0.05 * H };
     const lantern = { x: staffTop.x + 0.05 * H, y: staffTop.y + 0.09 * H };
 
-    // --- draw: glow first (behind the silhouette) ---
-    const glowR = 1.6 * H;
+    // --- draw: glow first (behind the silhouette), with a live flicker ---
+    const flicker = 0.86 + 0.28 * valueNoise1D(t * 5.5, 555);
+    const glowR = 1.6 * H * (0.94 + 0.12 * valueNoise1D(t * 3.2, 556));
     const glow = ctx.createRadialGradient(lantern.x, lantern.y, 0.02 * H, lantern.x, lantern.y, glowR);
-    glow.addColorStop(0, "rgba(255, 205, 130, 0.34)");
-    glow.addColorStop(0.4, "rgba(255, 180, 110, 0.12)");
+    glow.addColorStop(0, `rgba(255, 205, 130, ${0.34 * flicker})`);
+    glow.addColorStop(0.4, `rgba(255, 180, 110, ${0.12 * flicker})`);
     glow.addColorStop(1, "rgba(255, 180, 110, 0)");
     ctx.fillStyle = glow;
     ctx.fillRect(lantern.x - glowR, lantern.y - glowR, glowR * 2, glowR * 2);
+
+    // --- soft contact shadow so the feet feel planted ---
+    const shR = 0.34 * H;
+    const shadow = ctx.createRadialGradient(x0, groundAvg, 0, x0, groundAvg, shR);
+    shadow.addColorStop(0, "rgba(0, 0, 5, 0.38)");
+    shadow.addColorStop(1, "rgba(0, 0, 5, 0)");
+    ctx.save();
+    ctx.translate(x0, groundAvg + 0.01 * H);
+    ctx.scale(1, 0.18);
+    ctx.translate(-x0, -groundAvg);
+    ctx.fillStyle = shadow;
+    ctx.fillRect(x0 - shR, groundAvg - shR, shR * 2, shR * 2);
+    ctx.restore();
 
     ctx.fillStyle = this.cfg.bodyColor;
     ctx.strokeStyle = this.cfg.bodyColor;
@@ -165,7 +179,7 @@ export class Traveler {
 
     // --- hooded head, merged into the cloak collar ---
     ctx.beginPath();
-    ctx.arc(headC.x, headC.y, 0.09 * H, 0, Math.PI * 2);
+    ctx.arc(headC.x, headC.y, 0.082 * H, 0, Math.PI * 2);
     ctx.fill();
 
     // --- front leg ---

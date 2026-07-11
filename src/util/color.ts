@@ -25,3 +25,21 @@ export function rgbCss(c: RGB, alpha = 1): string {
 export function lerpHexCss(a: string, b: string, t: number, alpha = 1): string {
   return rgbCss(lerpRgb(hexToRgb(a), hexToRgb(b), t), alpha);
 }
+
+export function rgbToHex(c: RGB): string {
+  const [r, g, b] = c.map(Math.round);
+  return `#${((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1)}`;
+}
+
+/** Lerp two hex colors, returning hex (safe to feed back into lerps). */
+export function lerpHex(a: string, b: string, t: number): string {
+  return rgbToHex(lerpRgb(hexToRgb(a), hexToRgb(b), t));
+}
+
+export function lighten(hex: string, k: number): string {
+  return lerpHex(hex, "#ffffff", k);
+}
+
+export function darken(hex: string, k: number): string {
+  return lerpHex(hex, "#000000", k);
+}

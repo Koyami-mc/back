@@ -1,4 +1,4 @@
-import { hexToRgb, lerpRgb, lerp } from "../util/color.js";
+import { lerp, lerpHex } from "../util/color.js";
 
 export interface ParticleMix {
   snow: number;
@@ -25,6 +25,8 @@ export interface ScenePalette {
   treeDensity: [number, number];
   /** Near-plane camera speed in px/s. */
   cameraSpeed: number;
+  /** 0..1 strength of drifting mist bands between distant layers. */
+  mist: number;
 }
 
 export const SCENES: ScenePalette[] = [
@@ -45,6 +47,7 @@ export const SCENES: ScenePalette[] = [
     particles: { snow: 0, fireflies: 0, leaves: 0 },
     treeDensity: [0, 0],
     cameraSpeed: 140,
+    mist: 0.5,
   },
   {
     name: "forest",
@@ -63,6 +66,7 @@ export const SCENES: ScenePalette[] = [
     particles: { snow: 0, fireflies: 1, leaves: 0 },
     treeDensity: [0.72, 0.55],
     cameraSpeed: 120,
+    mist: 0.9,
   },
   {
     name: "snowfield",
@@ -75,12 +79,13 @@ export const SCENES: ScenePalette[] = [
       { pos: 1.0, color: "#e8eef5" },
     ],
     horizon: "#93a3b8",
-    layerColors: ["#8a97ad", "#74819a", "#5b6880", "#3f4a63", "#232c44"],
+    layerColors: ["#93a0b5", "#7a879f", "#5d6a84", "#3d4864", "#1f2840"],
     starAlpha: 0,
     moonAlpha: 0.25,
     particles: { snow: 1, fireflies: 0, leaves: 0 },
     treeDensity: [0.18, 0.12],
     cameraSpeed: 100,
+    mist: 0.7,
   },
   {
     name: "starryHill",
@@ -93,12 +98,13 @@ export const SCENES: ScenePalette[] = [
       { pos: 1.0, color: "#35406b" },
     ],
     horizon: "#16204a",
-    layerColors: ["#141a38", "#0f1430", "#0a0e24", "#060818", "#03040e"],
+    layerColors: ["#1a2244", "#131a38", "#0c1128", "#070a1a", "#03040e"],
     starAlpha: 1.4,
     moonAlpha: 0,
     particles: { snow: 0, fireflies: 0.15, leaves: 0 },
     treeDensity: [0, 0],
     cameraSpeed: 80,
+    mist: 0.25,
   },
   {
     name: "sunrise",
@@ -117,13 +123,9 @@ export const SCENES: ScenePalette[] = [
     particles: { snow: 0, fireflies: 0, leaves: 0.5 },
     treeDensity: [0.3, 0.2],
     cameraSpeed: 70,
+    mist: 0.6,
   },
 ];
-
-function lerpHex(a: string, b: string, t: number): string {
-  const [r, g, bl] = lerpRgb(hexToRgb(a), hexToRgb(b), t).map(Math.round);
-  return `#${((1 << 24) | (r << 16) | (g << 8) | bl).toString(16).slice(1)}`;
-}
 
 export function lerpScenePalette(a: ScenePalette, b: ScenePalette, t: number): ScenePalette {
   return {
@@ -146,5 +148,6 @@ export function lerpScenePalette(a: ScenePalette, b: ScenePalette, t: number): S
       lerp(a.treeDensity[1], b.treeDensity[1], t),
     ],
     cameraSpeed: lerp(a.cameraSpeed, b.cameraSpeed, t),
+    mist: lerp(a.mist, b.mist, t),
   };
 }
