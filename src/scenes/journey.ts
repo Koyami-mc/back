@@ -1,6 +1,7 @@
 import type { SKRSContext2D } from "@napi-rs/canvas";
 import { Sky, type SkyConfig } from "./sky.js";
-import { drawTerrainLayer, type TerrainLayerConfig } from "./terrain.js";
+import { drawTerrainLayer, terrainHeightAt, parallaxFactor, type TerrainLayerConfig } from "./terrain.js";
+import { Traveler } from "./character.js";
 
 /**
  * M2 journey scene: a pre-dawn landscape — deep indigo sky with stars
@@ -33,11 +34,15 @@ const LAYERS: TerrainLayerConfig[] = [
   { depth: 1.0, baseY: 0.95, amp: 0.07, wavelengthPx: 320, color: "#080714", seed: 55, octaves: 5 },
 ];
 
+/** The layer the traveler walks on (nearest ridge). */
+const WALK_LAYER = LAYERS[LAYERS.length - 1];
+
 export class JourneyScene {
   private sky: Sky;
+  private traveler: Traveler | null = null;
 
   constructor(
-    seed: number,
+    private seed: number,
     /** Camera speed on the near plane, in world pixels per second. */
     private cameraSpeedPx = 140,
   ) {
@@ -50,5 +55,25 @@ export class JourneyScene {
     for (const layer of LAYERS) {
       drawTerrainLayer(ctx, layer, cameraX, HORIZON_COLOR, w, h);
     }
+
+    if (!this.traveler) {
+      this.traveler = new Traveler({
+        screenX: w * 0.34,
+        height: h * 0.2,
+        bodyColor: "#05040c",
+        scarfColor: "#8c3a3f",
+      });
+    }
+    // Smooth the ridge under the character so footing doesn't jitter.
+    const groundYAt = (x: number): number => {
+      const s = 0.04 * h;
+      return (
+        (terrainHeightAt(WALK_LAYER, cameraX, x - s, h) +
+          terrainHeightAt(WALK_LAYER, cameraX, x, h) +
+          terrainHeightAt(WALK_LAYER, cameraX, x + s, h)) / 3
+      );
+    };
+    const groundSpeed = this.cameraSpeedPx * parallaxFactor(WALK_LAYER.depth);
+    this.traveler.render(ctx, t, cameraX * parallaxFactor(WALK_LAYER.depth), groundSpeed, groundYAt);
   }
 }
