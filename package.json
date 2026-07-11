@@ -1,0 +1,32 @@
+{
+  "name": "back",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "m1": "tsx src/main.ts",
+    "verify": "tsx src/tools/verifySync.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Koyami-mc/back.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Koyami-mc/back/issues"
+  },
+  "homepage": "https://github.com/Koyami-mc/back#readme",
+  "devDependencies": {
+    "@types/node": "^26.1.1",
+    "tsx": "^4.23.0",
+    "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "@napi-rs/canvas": "^1.0.2"
+  },
+  "type": "module"
+}
