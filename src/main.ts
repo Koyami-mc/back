@@ -21,6 +21,9 @@ async function main(): Promise<void> {
       fps: { type: "string", default: "60" },
       width: { type: "string", default: "1920" },
       height: { type: "string", default: "1080" },
+      // segment rendering: emit only [from, to) seconds of the timeline
+      from: { type: "string", default: "0" },
+      to: { type: "string" },
     },
   });
 
@@ -32,16 +35,27 @@ async function main(): Promise<void> {
   const outPath = values.out!;
   mkdirSync(dirname(outPath), { recursive: true });
 
+  const fromSec = Number(values.from);
+  const toSec = values.to !== undefined ? Number(values.to) : durationSec;
+  const isSegment = fromSec > 0 || toSec < durationSec;
+
   // The synthesized metronome doubles as the sync-verification track;
-  // --audio none renders silent footage.
+  // --audio none renders silent footage. Segments are muxed silent —
+  // audio is attached when the segments are concatenated.
   let audioPath: string | undefined;
-  if (values.audio === "click") {
+  if (values.audio === "click" && !isSegment) {
     audioPath = join(dirname(outPath), "click.wav");
     writeClickWav(audioPath, durationSec, grid);
   }
 
-  const totalFrames = Math.round(durationSec * fps);
-  console.log(`Rendering ${totalFrames} frames @ ${width}x${height} ${fps}fps (scene=${values.scene})`);
+  const startFrame = Math.round(fromSec * fps);
+  const endFrame = Math.round(toSec * fps);
+  // Stateful sub-systems (the Verlet scarf) need a short warm-up before
+  // the first emitted frame of a mid-timeline segment.
+  const prerollFrames = startFrame > 0 ? Math.round(1.5 * fps) : 0;
+  console.log(
+    `Rendering frames ${startFrame}..${endFrame - 1} of ${Math.round(durationSec * fps)} @ ${width}x${height} ${fps}fps (scene=${values.scene}, preroll=${prerollFrames})`,
+  );
 
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext("2d");
@@ -50,20 +64,22 @@ async function main(): Promise<void> {
   const journey = values.scene === "journey" ? new JourneyScene(Number(values.seed), durationSec) : null;
 
   const startedAt = Date.now();
-  for (let frame = 0; frame < totalFrames; frame++) {
+  for (let frame = startFrame - prerollFrames; frame < endFrame; frame++) {
     const t = frame / fps;
     if (journey) journey.render(ctx, t, width, height);
     else renderTestFrame(ctx, t, durationSec, grid, width, height);
+    if (frame < startFrame) continue; // warm-up only, don't emit
     await encoder.writeFrame(ctx.getImageData(0, 0, width, height).data);
-    if (frame % fps === 0) {
+    if ((frame - startFrame) % fps === 0) {
       const elapsed = (Date.now() - startedAt) / 1000;
-      process.stdout.write(`\r  frame ${frame}/${totalFrames} (${elapsed.toFixed(1)}s elapsed)`);
+      process.stdout.write(`\r  frame ${frame}/${endFrame} (${elapsed.toFixed(1)}s elapsed)`);
     }
   }
   await encoder.finish();
 
   const totalSec = (Date.now() - startedAt) / 1000;
-  console.log(`\nDone: ${outPath} (${totalSec.toFixed(1)}s, ${(totalFrames / totalSec).toFixed(1)} fps encode speed)`);
+  const emitted = endFrame - startFrame;
+  console.log(`\nDone: ${outPath} (${totalSec.toFixed(1)}s, ${(emitted / totalSec).toFixed(1)} fps encode speed)`);
 }
 
 main().catch((err) => {

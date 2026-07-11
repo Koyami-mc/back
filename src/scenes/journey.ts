@@ -65,8 +65,8 @@ export class JourneyScene {
   private fireflies: Particles;
   private leaves: Particles;
   private postfx: PostFX;
-  private cameraX = 0;
-  private lastT: number | null = null;
+  /** cameraX sampled at 60 Hz, precomputed so any t is random-accessible. */
+  private cameraXTable: Float64Array;
 
   constructor(
     seed: number,
@@ -78,14 +78,28 @@ export class JourneyScene {
     this.fireflies = new Particles("fireflies", seed + 200);
     this.leaves = new Particles("leaves", seed + 300);
     this.postfx = new PostFX(seed + 400);
+
+    // Integrate camera speed once up front. This keeps rendering
+    // stateless in t, which segment renders (--from/--to) rely on.
+    const steps = Math.ceil(durationSec * 60) + 2;
+    this.cameraXTable = new Float64Array(steps);
+    let x = 0;
+    for (let i = 1; i < steps; i++) {
+      x += resolveTimeline((i - 0.5) / 60, durationSec).cameraSpeed / 60;
+      this.cameraXTable[i] = x;
+    }
+  }
+
+  private cameraXAt(t: number): number {
+    const idx = Math.max(0, Math.min(this.cameraXTable.length - 2, t * 60));
+    const i = Math.floor(idx);
+    const f = idx - i;
+    return this.cameraXTable[i] * (1 - f) + this.cameraXTable[i + 1] * f;
   }
 
   render(ctx: SKRSContext2D, t: number, w: number, h: number): void {
     const state = resolveTimeline(t, this.durationSec);
-    const dt = this.lastT === null ? 1 / 60 : t - this.lastT;
-    this.lastT = t;
-    this.cameraX += state.cameraSpeed * dt;
-    const cameraX = this.cameraX;
+    const cameraX = this.cameraXAt(t);
     const scale = h / 1080;
 
     // lighting anchors, shared by rim light, mist tint, and the glow pass
@@ -151,7 +165,7 @@ export class JourneyScene {
     // foreground band + grass, fastest-moving and darkest
     const fgColor = darken(state.layerColors[4], 0.45);
     drawTerrainLayer(ctx, FOREGROUND, cameraX, { fill: fgColor, gradientBottom: darken(fgColor, 0.3) }, w, h);
-    this.drawGrass(ctx, t, w, h, fgColor);
+    this.drawGrass(ctx, t, cameraX, w, h, fgColor);
 
     ctx.restore();
 
@@ -199,9 +213,9 @@ export class JourneyScene {
   }
 
   /** Wind-leaning grass blades along the foreground ridge. */
-  private drawGrass(ctx: SKRSContext2D, t: number, w: number, h: number, color: string): void {
+  private drawGrass(ctx: SKRSContext2D, t: number, cameraX: number, w: number, h: number, color: string): void {
     const cell = 16;
-    const offset = this.cameraX * parallaxFactor(FOREGROUND.depth);
+    const offset = cameraX * parallaxFactor(FOREGROUND.depth);
     const first = Math.floor((offset - 30) / cell);
     const last = Math.ceil((offset + w + 30) / cell);
     ctx.strokeStyle = color;
@@ -211,7 +225,7 @@ export class JourneyScene {
       if (r1 < 0.25) continue; // gaps read more natural than a solid brush
       const x = i * cell + hash01(i, 9002) * cell - offset;
       if (x < -30 || x > w + 30) continue;
-      const groundY = terrainHeightAt(FOREGROUND, this.cameraX, x, h) + 2 * (h / 1080);
+      const groundY = terrainHeightAt(FOREGROUND, cameraX, x, h) + 2 * (h / 1080);
       if (groundY > h + 4) continue;
       const len = h * (0.014 + 0.02 * hash01(i, 9003));
       const lean = 0.45 * Math.sin(t * 1.1 + i * 0.8) + 0.3;
